@@ -203,7 +203,7 @@ namespace casadi {
     int ret;
 
     // Set objective
-    ret = osqp_update_lin_cost(m->work, arg[CONIC_G]);
+    if (arg[CONIC_G]) ret = osqp_update_lin_cost(m->work, arg[CONIC_G]);
     casadi_assert(ret==0, "Problem in osqp_update_lin_cost");
 
     // Set bounds
