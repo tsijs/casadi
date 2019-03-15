@@ -587,6 +587,8 @@ void OptiNode::bake() {
     symbol_active_[meta(d).count] = true;
 
   std::vector<MX> x = active_symvar(OPTI_VAR);
+  for (casadi_int i=0;i<x.size();++i) meta(x[i]).active_i = i;
+
   casadi_int offset = 0;
   for (const auto& v : x) {
     meta(v).start = offset;
@@ -594,6 +596,7 @@ void OptiNode::bake() {
     meta(v).stop = offset;
   }
   std::vector<MX> p = active_symvar(OPTI_PAR);
+  for (casadi_int i=0;i<p.size();++i) meta(p[i]).active_i = i;
 
   // Fill the nlp definition
   nlp_["x"] = veccat(x);
@@ -618,7 +621,10 @@ void OptiNode::bake() {
 
   }
 
-  lam_ = veccat(active_symvar(OPTI_DUAL_G));
+  std::vector<MX> lam = active_symvar(OPTI_DUAL_G);
+  for (casadi_int i=0;i<lam.size();++i) meta(lam[i]).active_i = i;
+
+  lam_ = veccat(lam);
 
   // Collect bounds and canonical form of constraints
   std::vector<MX> g_all;
@@ -1279,13 +1285,15 @@ Function OptiNode::to_function(const std::string& name,
   assign_vector(active_values(OPTI_DUAL_G), lam_g);
 
   for (const auto& a : args) {
-    casadi_int i = meta(a).i;
+    casadi_assert(symbol_active_[meta(a).count],
+      "Symbol not occuring in problem" + describe(a));
+    casadi_int i = meta(a).active_i;
     if (meta(a).type==OPTI_VAR) {
-      x0[i] = a;
+      x0.at(i) = a;
     } else if (meta(a).type==OPTI_PAR) {
-      p[i] = a;
+      p.at(i) = a;
     } else if (meta(a).type==OPTI_DUAL_G) {
-      lam_g[i] = a;
+      lam_g.at(i) = a;
     } else {
       casadi_error("Unknown");
     }

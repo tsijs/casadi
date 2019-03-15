@@ -422,6 +422,7 @@ public:
     VariableType type;
     casadi_int count;
     casadi_int i;
+    casadi_int active_i;
     Dict extra;
   };
 
