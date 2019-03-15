@@ -333,7 +333,7 @@ namespace casadi {
   }
 
   void OsqpInterface::codegen_body(CodeGenerator& g) const {
-    g.add_include("osqp.h");
+    g.add_include("osqp/osqp.h");
     g.add_auxiliary(CodeGenerator::AUX_INF);
 
     g.local("work", "OSQPWorkspace", "*");
