@@ -141,7 +141,9 @@ namespace casadi {
   public:
 
     /** \brief  Constructor */
-    explicit ConstantDM(const Matrix<double>& x) : ConstantMX(x.sparsity()), x_(x) {}
+    explicit ConstantDM(const Matrix<double>& x) : ConstantMX(x.sparsity()), x_(x), sx_(x) {
+      bvec_zeros_.resize(nnz(), bvec_t(0));
+    }
 
     /// Destructor
     ~ConstantDM() override {}
@@ -153,14 +155,14 @@ namespace casadi {
 
     /** \brief  Evaluate the function numerically */
     int eval(const double** arg, double** res, casadi_int* iw, double* w) const override {
-      std::copy(x_->begin(), x_->end(), res[0]);
+      res[0] = const_cast<double*>(get_ptr(x_));
       return 0;
     }
 
     /** \brief  Evaluate the function symbolically (SX) */
     int eval_sx(const SXElem** arg, SXElem** res,
                          casadi_int* iw, SXElem* w) const override {
-      std::copy(x_->begin(), x_->end(), res[0]);
+      res[0] = const_cast<SXElem*>(get_ptr(sx_));
       return 0;
     }
 
@@ -186,11 +188,18 @@ namespace casadi {
 
     /** \brief  data member */
     Matrix<double> x_;
+    Matrix<SXElem> sx_;
+    std::vector<bvec_t> bvec_zeros_;
 
     /** \brief Serialize an object without type information */
     void serialize_body(SerializingStream& s) const override;
     /** \brief Serialize type information */
     void serialize_type(SerializingStream& s) const override;
+
+    /** \brief  Propagate sparsity forward */
+    int sp_forward(const bvec_t** arg, bvec_t** res, casadi_int* iw, bvec_t* w) const override;
+
+    bool elide_copy() const override { return true; }
 
     /** \brief Deserializing constructor */
     explicit ConstantDM(DeserializingStream& s);
@@ -244,6 +253,8 @@ namespace casadi {
 
     /** \brief nonzeros */
     std::vector<double> x_;
+
+    bool elide_copy() const override { return true; }
 
     /** \brief Serialize an object without type information */
     void serialize_body(SerializingStream& s) const override;

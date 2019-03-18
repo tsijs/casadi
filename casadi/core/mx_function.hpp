@@ -77,6 +77,12 @@ namespace casadi {
     /// Default input values
     std::vector<double> default_in_;
 
+
+    std::vector<double> zero_array_;
+    std::vector<bvec_t> zero_array_bvec_t_;
+
+    casadi_int sz_r_;
+
     /// Live variables?
     bool live_variables_;
 
