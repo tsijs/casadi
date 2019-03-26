@@ -119,6 +119,7 @@ class Example4To3_Fwd(Example4To3):
       # Evaluate numerically
       def eval(self, arg):
         a,b,c,d = vertsplit(arg[0])
+        print("The inputs of the matrix function are:", arg[0])
         a_dot,b_dot,c_dot,d_dot = vertsplit(arg[2])
         print("Forward sweep with", a_dot,b_dot,c_dot,d_dot)
         w0 = sin(c)

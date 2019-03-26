@@ -163,7 +163,7 @@ namespace casadi {
     }
 
     // Do we need second order derivatives?
-    exact_hessian_ = true;
+    exact_hessian_ = false;// this is a hack. 
     auto hessian_approximation = opts_.find("hessian_approximation");
     if (hessian_approximation!=opts_.end()) {
       exact_hessian_ = hessian_approximation->second == "exact";
