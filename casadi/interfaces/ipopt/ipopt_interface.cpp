@@ -103,6 +103,9 @@ namespace casadi {
       {"f",
        {OT_FUNCTION,
         "Function for calculating the value of the cost"}},      
+      {"g",
+       {OT_FUNCTION,
+        "Function for calculating the value of the constraint functions"}},      
       {"jac_g",
        {OT_FUNCTION,
         "Function for calculating the Jacobian of the constraints "
@@ -159,11 +162,16 @@ namespace casadi {
         casadi_assert_dev(f.n_in()==2);
         casadi_assert_dev(f.n_out()==1);
         set_function(f, "nlp_f");
+      } else if (op.first=="g") {
+        Function f = op.second;
+        casadi_assert_dev(f.n_in()==2);
+        casadi_assert_dev(f.n_out()==1);
+        set_function(f, "nlp_g");
     }
     }
 
     // Do we need second order derivatives?
-    exact_hessian_ = false;// this is a hack. 
+    exact_hessian_ = true;//false;// this is a hack. 
     auto hessian_approximation = opts_.find("hessian_approximation");
     if (hessian_approximation!=opts_.end()) {
       exact_hessian_ = hessian_approximation->second == "exact";
@@ -173,7 +181,9 @@ namespace casadi {
     if (!has_function("nlp_f")) {
       create_function("nlp_f", {"x", "p"}, {"f"});
     }
-    create_function("nlp_g", {"x", "p"}, {"g"});
+    if (!has_function("nlp_g")) {
+      create_function("nlp_g", {"x", "p"}, {"f"});
+    }
     if (!has_function("nlp_grad_f")) {
       create_function("nlp_grad_f", {"x", "p"}, {"f", "grad:f:x"});
     }
