@@ -407,6 +407,26 @@ namespace casadi {
         zeta_ = op.second;
       } else if (op.first=="print_maxit_reached") {
         print_maxit_reached_ = op.second;
+      } else if (op.first=="hess_lag") {
+        Function f = op.second;
+        casadi_assert_dev(f.n_in()==4);
+        casadi_assert_dev(f.n_out()==1);
+        set_function(f, "nlp_hess_l");
+      } else if (op.first=="grad_lag") {
+        Function f = op.second;
+        casadi_assert_dev(f.n_in()==4);
+        casadi_assert_dev(f.n_out()==1);
+        set_function(f, "grad_lag");
+      } else if (op.first=="gf_jg") {
+        Function f = op.second;
+        casadi_assert_dev(f.n_in()==2);
+        casadi_assert_dev(f.n_out()==4);
+        set_function(f, "nlp_gf_jg");
+      } else if (op.first=="fg") {
+        Function f = op.second;
+        casadi_assert_dev(f.n_in()==2);
+        casadi_assert_dev(f.n_out()==2);
+        set_function(f, "nlp_fg");
       }
     }
 
@@ -467,8 +487,11 @@ namespace casadi {
     }
 
     // Setup NLP functions
-    create_function("nlp_fg", {"x", "p"}, {"f", "g"});
-    Function gf_jg = create_function("nlp_gf_jg", {"x", "p"},
+    if (!has_function("nlp_fg")) 
+      create_function("nlp_fg", {"x", "p"}, {"f", "g"});
+    // create_function("nlp_fg", {"x", "p"}, {"f", "g"});
+    if (!has_function("nlp_gf_jg"))
+      Function gf_jg = create_function("nlp_gf_jg", {"x", "p"},
                                      {"f", "g", "grad:f:x", "jac:g:x"});
     Asp_ = gf_jg.sparsity_out("jac_g_x");
 
@@ -481,7 +504,8 @@ namespace casadi {
       // Detect block structure
 
       // Get the sparsity pattern for the Hessian of the Lagrangian
-      Function grad_lag = oracle_.factory("grad_lag",
+      if (!has_function("grad_lag"))
+        Function grad_lag = oracle_.factory("grad_lag",
                                           {"x", "p", "lam:f", "lam:g"}, {"grad:gamma:x"},
                                           {{"gamma", {"f", "g"}}});
       Hsp_ = grad_lag.sparsity_jac("x", "grad_gamma_x", false, true);
@@ -519,9 +543,19 @@ namespace casadi {
       nnz_H_ += dim_[i]*dim_[i];
     }
 
-    create_function("nlp_hess_l", {"x", "p", "lam:f", "lam:g"},
-                    {"hess:gamma:x:x"}, {{"gamma", {"f", "g"}}});
-    exact_hess_lag_sp_ = get_function("nlp_hess_l").sparsity_out(0);
+    if (exact_hessian_) {
+      if (!has_function("nlp_hess_l")) {
+        create_function("nlp_hess_l", {"x", "p", "lam:f", "lam:g"},
+                      {"sym:hess:gamma:x:x"}, {{"gamma", {"f", "g"}}});
+      }
+      exact_hess_lag_sp_ = get_function("nlp_hess_l").sparsity_out(0);
+      casadi_assert(exact_hess_lag_sp_.is_symmetric(), "Hessian must be symmetric");
+    } else {
+      exact_hess_lag_sp_ = Sparsity::dense(nx_, nx_);
+    }
+    // create_function("nlp_hess_l", {"x", "p", "lam:f", "lam:g"},
+    //                 {"hess:gamma:x:x"}, {{"gamma", {"f", "g"}}});
+    // exact_hess_lag_sp_ = get_function("nlp_hess_l").sparsity_out(0);
 
     if (verbose_) casadi_message(str(nblocks_) + " blocks of max size " + str(max_size) + ".");
 
