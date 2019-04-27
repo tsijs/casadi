@@ -490,9 +490,13 @@ namespace casadi {
     if (!has_function("nlp_fg")) 
       create_function("nlp_fg", {"x", "p"}, {"f", "g"});
     // create_function("nlp_fg", {"x", "p"}, {"f", "g"});
+    Function gf_jg;
     if (!has_function("nlp_gf_jg"))
-      Function gf_jg = create_function("nlp_gf_jg", {"x", "p"},
+      gf_jg = create_function("nlp_gf_jg", {"x", "p"},
                                      {"f", "g", "grad:f:x", "jac:g:x"});
+    else 
+      gf_jg = get_function("nlp_gf_jq");
+
     Asp_ = gf_jg.sparsity_out("jac_g_x");
 
     if (!block_hess_) {
@@ -504,11 +508,25 @@ namespace casadi {
       // Detect block structure
 
       // Get the sparsity pattern for the Hessian of the Lagrangian
+      Function grad_lag;
       if (!has_function("grad_lag"))
-        Function grad_lag = oracle_.factory("grad_lag",
+        grad_lag = oracle_.factory("grad_lag",
                                           {"x", "p", "lam:f", "lam:g"}, {"grad:gamma:x"},
                                           {{"gamma", {"f", "g"}}});
-      Hsp_ = grad_lag.sparsity_jac("x", "grad_gamma_x", false, true);
+      else {
+        grad_lag = get_function("grad_lag");
+      }
+
+      if (!has_function("nlp_hess_l")) {
+        // TODO add option for LBFGS if it makes sense? (probably not though?)
+        create_function("nlp_hess_l", {"x", "p", "lam:f", "lam:g"},
+                      {"sym:hess:gamma:x:x"}, {{"gamma", {"f", "g"}}});
+        Hsp_ = grad_lag.sparsity_jac("x", "grad_gamma_x", false, true);
+      }
+      else {
+        Function hess_l = get_function("nlp_hess_l");
+        Hsp_ = hess_l.sparsity_out("hess_gamma_x_x");
+      }
 
       // Make sure diagonal exists
       Hsp_ = Hsp_ + Sparsity::diag(nx_);
@@ -543,16 +561,9 @@ namespace casadi {
       nnz_H_ += dim_[i]*dim_[i];
     }
 
-    if (exact_hessian_) {
-      if (!has_function("nlp_hess_l")) {
-        create_function("nlp_hess_l", {"x", "p", "lam:f", "lam:g"},
-                      {"sym:hess:gamma:x:x"}, {{"gamma", {"f", "g"}}});
-      }
-      exact_hess_lag_sp_ = get_function("nlp_hess_l").sparsity_out(0);
-      casadi_assert(exact_hess_lag_sp_.is_symmetric(), "Hessian must be symmetric");
-    } else {
-      exact_hess_lag_sp_ = Sparsity::dense(nx_, nx_);
-    }
+    exact_hess_lag_sp_ = get_function("nlp_hess_l").sparsity_out(0);
+    casadi_assert(exact_hess_lag_sp_.is_symmetric(), "Hessian must be symmetric");
+    
     // create_function("nlp_hess_l", {"x", "p", "lam:f", "lam:g"},
     //                 {"hess:gamma:x:x"}, {{"gamma", {"f", "g"}}});
     // exact_hess_lag_sp_ = get_function("nlp_hess_l").sparsity_out(0);
