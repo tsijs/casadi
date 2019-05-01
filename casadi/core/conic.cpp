@@ -25,6 +25,7 @@
 
 #include "conic_impl.hpp"
 #include "nlpsol_impl.hpp"
+#include <fstream>
 
 using namespace std;
 namespace casadi {
@@ -500,18 +501,28 @@ namespace casadi {
   int Conic::
   eval(const double** arg, double** res, casadi_int* iw, double* w, void* mem) const {
     if (print_problem_) {
-      uout() << "H:";
-      DM::print_dense(uout(), H_, arg[CONIC_H], false);
-      uout() << std::endl;
-      uout() << "G:" << std::vector<double>(arg[CONIC_G], arg[CONIC_G]+nx_) << std::endl;
-      uout() << "A:";
-      DM::print_dense(uout(), A_, arg[CONIC_A], false);
-      uout() << std::endl;
-      uout() << "lba:" << std::vector<double>(arg[CONIC_LBA], arg[CONIC_LBA]+na_) << std::endl;
-      uout() << "uba:" << std::vector<double>(arg[CONIC_UBA], arg[CONIC_UBA]+na_) << std::endl;
-      uout() << "lbx:" << std::vector<double>(arg[CONIC_LBX], arg[CONIC_LBX]+nx_) << std::endl;
-      uout() << "ubx:" << std::vector<double>(arg[CONIC_UBX], arg[CONIC_UBX]+nx_) << std::endl;
+      time_t t = time(0);   // get time now
+      struct tm * now = localtime( & t );
+
+      char buffer [80];
+      strftime (buffer,80,"%Y-%m-%d.",now);
+
+      std::ofstream myfile;
+      myfile.open (buffer);
+
+      myfile << "H:";
+      DM::print_dense(myfile, H_, arg[CONIC_H], false);
+      myfile << std::endl;
+      myfile << "G:" << std::vector<double>(arg[CONIC_G], arg[CONIC_G]+nx_) << std::endl;
+      myfile << "A:";
+      DM::print_dense(myfile, A_, arg[CONIC_A], false);
+      myfile << std::endl;
+      myfile << "lba:" << std::vector<double>(arg[CONIC_LBA], arg[CONIC_LBA]+na_) << std::endl;
+      myfile << "uba:" << std::vector<double>(arg[CONIC_UBA], arg[CONIC_UBA]+na_) << std::endl;
+      myfile << "lbx:" << std::vector<double>(arg[CONIC_LBX], arg[CONIC_LBX]+nx_) << std::endl;
+      myfile << "ubx:" << std::vector<double>(arg[CONIC_UBX], arg[CONIC_UBX]+nx_) << std::endl;
     }
+    
     if (inputs_check_) {
       check_inputs(arg[CONIC_LBX], arg[CONIC_UBX], arg[CONIC_LBA], arg[CONIC_UBA]);
     }
