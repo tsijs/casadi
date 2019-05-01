@@ -503,10 +503,10 @@ namespace casadi {
       // Detect block structure
 
       // Get the sparsity pattern for the Hessian of the Lagrangian
-      Function grad_lag;
+      
       if (!has_function("nlp_hess_l"))
       {
-        grad_lag = oracle_.factory("grad_lag",
+        Function grad_lag = oracle_.factory("grad_lag",
                                         {"x", "p", "lam:f", "lam:g"}, {"grad:gamma:x"},
                                         {{"gamma", {"f", "g"}}});
         Hsp_ = grad_lag.sparsity_jac("x", "grad_gamma_x", false, true);
@@ -552,10 +552,6 @@ namespace casadi {
       nnz_H_ += dim_[i]*dim_[i];
     }
 
-    
-    // create_function("nlp_hess_l", {"x", "p", "lam:f", "lam:g"},
-    //                 {"hess:gamma:x:x"}, {{"gamma", {"f", "g"}}});
-    // exact_hess_lag_sp_ = get_function("nlp_hess_l").sparsity_out(0);
 
     if (verbose_) casadi_message(str(nblocks_) + " blocks of max size " + str(max_size) + ".");
 

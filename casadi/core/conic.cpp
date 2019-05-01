@@ -505,22 +505,31 @@ namespace casadi {
       struct tm * now = localtime( & t );
 
       char buffer [80];
-      strftime (buffer,80,"%Y-%m-%d.",now);
+      strftime (buffer,80,"%Y-%m-%d_%I:%M:%S%p",now);
 
-      std::ofstream myfile;
-      myfile.open (buffer);
+      std::ofstream myfile_H;
+      myfile_H.open ((std::string("/home/twan/fileshare/experiment/qp_example/") + std::string(buffer) + std::string("_H.txt")).c_str());
+      DM::print_dense(myfile_H, H_, arg[CONIC_H], false);
+      myfile_H.close ();
+      std::ofstream myfile_A;
+      myfile_A.open ((std::string("/home/twan/fileshare/experiment/qp_example/") + std::string(buffer) + std::string("_A.txt")).c_str());
+      DM::print_dense(myfile_A, A_, arg[CONIC_A], false);
+      myfile_A.close ();
 
-      myfile << "H:";
-      DM::print_dense(myfile, H_, arg[CONIC_H], false);
-      myfile << std::endl;
-      myfile << "G:" << std::vector<double>(arg[CONIC_G], arg[CONIC_G]+nx_) << std::endl;
-      myfile << "A:";
-      DM::print_dense(myfile, A_, arg[CONIC_A], false);
-      myfile << std::endl;
-      myfile << "lba:" << std::vector<double>(arg[CONIC_LBA], arg[CONIC_LBA]+na_) << std::endl;
-      myfile << "uba:" << std::vector<double>(arg[CONIC_UBA], arg[CONIC_UBA]+na_) << std::endl;
-      myfile << "lbx:" << std::vector<double>(arg[CONIC_LBX], arg[CONIC_LBX]+nx_) << std::endl;
-      myfile << "ubx:" << std::vector<double>(arg[CONIC_UBX], arg[CONIC_UBX]+nx_) << std::endl;
+      std::ofstream myfile_G;
+      myfile_G.open ((std::string("/home/twan/fileshare/experiment/qp_example/") + std::string(buffer) + std::string("_G.txt")).c_str());
+      myfile_G << "G:" << std::vector<double>(arg[CONIC_G], arg[CONIC_G]+nx_) << std::endl;
+      myfile_G.close ();
+
+      std::ofstream myfile_bounds;
+      myfile_bounds.open ((std::string("/home/twan/fileshare/experiment/qp_example/") + std::string(buffer) + std::string("_bounds.txt")).c_str());
+      myfile_bounds << "lba:" << std::vector<double>(arg[CONIC_LBA], arg[CONIC_LBA]+na_) << std::endl;
+      myfile_bounds << "uba:" << std::vector<double>(arg[CONIC_UBA], arg[CONIC_UBA]+na_) << std::endl;
+      myfile_bounds.close ();
+      
+      // myfile << "lbx:" << std::vector<double>(arg[CONIC_LBX], arg[CONIC_LBX]+nx_) << std::endl;
+      // myfile << "ubx:" << std::vector<double>(arg[CONIC_UBX], arg[CONIC_UBX]+nx_) << std::endl;
+      
     }
     
     if (inputs_check_) {
