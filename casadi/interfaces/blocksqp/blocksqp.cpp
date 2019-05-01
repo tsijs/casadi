@@ -113,7 +113,7 @@ namespace casadi {
        {OT_INT,
         "Maximum number of QP iterations per SQP iteration"}},
       {"block_hess",
-       {OT_INT,
+       {OT_BOOL,
         "Blockwise Hessian approximation?"}},
       {"hess_scaling",
        {OT_INT,
@@ -412,7 +412,7 @@ namespace casadi {
         casadi_assert_dev(f.n_in()==4);
         casadi_assert_dev(f.n_out()==1);
         set_function(f, "nlp_hess_l");
-      } else if (op.first=="gf_jg") {
+      } else if (op.first=="jac_fg") {
         Function f = op.second;
         casadi_assert_dev(f.n_in()==2);
         casadi_assert_dev(f.n_out()==4);
@@ -553,7 +553,7 @@ namespace casadi {
     }
 
 
-    if (verbose_) casadi_message(str(nblocks_) + " blocks of max size " + str(max_size) + ".");
+    // if (verbose_) casadi_message(str(nblocks_) + " blocks of max size " + str(max_size) + ".");
 
     // Allocate a QP solver
     //casadi_assert(!qpsol_plugin.empty(), "'qpsol' option has not been set");
