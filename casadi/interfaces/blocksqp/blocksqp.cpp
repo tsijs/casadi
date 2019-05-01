@@ -113,7 +113,7 @@ namespace casadi {
        {OT_INT,
         "Maximum number of QP iterations per SQP iteration"}},
       {"block_hess",
-       {OT_INT,
+       {OT_BOOL,
         "Blockwise Hessian approximation?"}},
       {"hess_scaling",
        {OT_INT,
