@@ -531,6 +531,7 @@ namespace casadi {
         Function hess_l = get_function("nlp_hess_l");
         Hsp_ = hess_l.sparsity_out(0);// "hess_gamma_x_x" This callback now always returns the hess sparsity. Could and maybe should be changed?
         casadi_assert(Hsp_.is_symmetric(), "Hessian must be symmetric");
+        exact_hess_lag_sp_ = get_function("nlp_hess_l").sparsity_out(0);
       }
 
       // Make sure diagonal exists
@@ -567,7 +568,7 @@ namespace casadi {
     }
 
 
-    // if (verbose_) casadi_message(str(nblocks_) + " blocks of max size " + str(max_size) + ".");
+    if (verbose_) casadi_message(str(nblocks_) + " blocks of max size " + str(max_size) + ".");
 
     // Allocate a QP solver
     //casadi_assert(!qpsol_plugin.empty(), "'qpsol' option has not been set");
