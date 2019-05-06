@@ -368,10 +368,12 @@ int Sqpmethod::solve(void* mem) const {
       }
 
       // Callback function
-      if (callback(m)) {
-        if (print_status_) print("WARNING(sqpmethod): Aborted by callback...\n");
-        m->return_status = "User_Requested_Stop";
-        break;
+      if (m->iter_count % callback_step_ == 0) {
+        if (callback(m)) {
+          if (print_status_) print("WARNING(sqpmethod): Aborted by callback...\n");
+          m->return_status = "User_Requested_Stop";
+          break;
+        }
       }
 
       // Checking convergence criteria

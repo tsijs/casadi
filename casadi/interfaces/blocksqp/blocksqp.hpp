@@ -338,6 +338,8 @@ namespace casadi {
     double eps_;  // values smaller than this are regarded as numerically zero
     double opttol_;  // optimality tolerance
     double nlinfeastol_; // nonlinear feasibility tolerance
+    Function fcallback_; /// callback function, executed at each iteration
+    casadi_int callback_step_; /// Execute the callback function only after this amount of iterations
 
     // Algorithmic options
     bool schur_;  // Use qpOASES schur compliment approach

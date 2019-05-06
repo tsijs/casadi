@@ -24,6 +24,7 @@
 
 
 #include "blocksqp.hpp"
+#include "casadi/core/core.hpp"
 #include "casadi/core/casadi_misc.hpp"
 #include "casadi/core/conic.hpp"
 
@@ -58,7 +59,14 @@ namespace casadi {
 
   const Options Blocksqp::options_
   = {{&Nlpsol::options_},
-     {{"qpsol",
+     {{"iteration_callback",
+       {OT_FUNCTION,
+        "A function that will be called at each iteration with the solver as input. "
+        "Check documentation of Callback."}},
+      {"iteration_callback_step",
+       {OT_INT,
+        "Only call the callback function every few iterations."}},
+      {"qpsol",
        {OT_STRING,
         "The QP solver to be used by the SQP method"}},
       {"qpsol_options",
@@ -304,7 +312,11 @@ namespace casadi {
 
     // Read user options
     for (auto&& op : opts) {
-      if (op.first=="qpsol") {
+      if (op.first=="iteration_callback") {
+        fcallback_ = op.second;
+      } else if (op.first=="iteration_callback_step") {
+        callback_step_ = op.second;
+      } if (op.first=="qpsol") {
         //qpsol_plugin = op.second.to_string();
         casadi_warning("Option 'qpsol' currently not supported, ignored");
       } else if (op.first=="qpsol_options") {
@@ -960,6 +972,16 @@ namespace casadi {
 
       /// Print one line of output for the current iteration
       if (print_iteration_) printProgress(m);
+      
+      // Callback function
+      if (it % callback_step_ == 0) {
+        if (callback(m)) {
+          // TODO make the return status something useful
+          print("\nUser requested stop by callback!\n");
+          break;
+        }
+      }
+      
       updateStats(m);
       if (hasConverged && m->steptype < 2) {
         if (print_iteration_) print("\n***CONVERGENCE ACHIEVED!***\n");
@@ -2894,7 +2916,7 @@ namespace casadi {
                 casadi_max_viol(ng_, g, d_nlp->lbz+nx_, d_nlp->ubz+nx_));
   }
 
-
+  // TODO add the options for callback to this (de-)serializing?
   Blocksqp::Blocksqp(DeserializingStream& s) : Nlpsol(s) {
     s.version("Blocksqp", 1);
     s.unpack("Blocksqp::nblocks", nblocks_);
