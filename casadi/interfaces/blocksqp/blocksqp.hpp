@@ -312,15 +312,19 @@ namespace casadi {
     void initIterate(BlocksqpMemory* m) const;
 
     /// Evaluate objective and constraints, including derivatives
-    casadi_int evaluate(BlocksqpMemory* m, double *f, double *g,
+    casadi_int eval_jac_fg(BlocksqpMemory* m, double *f, double *g,
                  double *grad_f, double *jac_g) const;
 
     /// Evaluate objective and constraints, no derivatives
-    casadi_int evaluate(BlocksqpMemory* m, const double *xk,
+    casadi_int eval_fg(BlocksqpMemory* m, const double *xk,
                  double *f, double *g) const;
 
     /// Evaluate exact hessian of Lagrangian
-    casadi_int evaluate(BlocksqpMemory* m,
+    casadi_int eval_hess_l(BlocksqpMemory* m,
+                 double *exact_hess_lag) const;
+
+    /// Evaluate the initial approximate hessian of Lagrangian
+    casadi_int eval_hess_l_approx_init(BlocksqpMemory* m,
                  double *exact_hess_lag) const;
 
     //  Declaration of general purpose routines for matrix and vector computations

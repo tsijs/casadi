@@ -430,6 +430,11 @@ namespace casadi {
         zeta_ = op.second;
       } else if (op.first=="print_maxit_reached") {
         print_maxit_reached_ = op.second;
+      } else if (op.first=="hess_lag_approx_init") {
+        Function f = op.second;
+        casadi_assert_dev(f.n_in()==4);
+        casadi_assert_dev(f.n_out()==1);
+        set_function(f, "nlp_hess_approx_init");
       } else if (op.first=="hess_lag") {
         Function f = op.second;
         casadi_assert_dev(f.n_in()==4);
@@ -529,7 +534,6 @@ namespace casadi {
       // Detect block structure
 
       // Get the sparsity pattern for the Hessian of the Lagrangian
-      
       if (!has_function("nlp_hess_l"))
       {
         Function grad_lag = oracle_.factory("grad_lag",
@@ -545,6 +549,19 @@ namespace casadi {
         casadi_assert(Hsp_.is_symmetric(), "Hessian must be symmetric");
         exact_hess_lag_sp_ = get_function("nlp_hess_l").sparsity_out(0);
       }
+      
+      // check if setting for custom initialization callback has been set and the sparsity corresponds to the exact hessian
+      if (has_function("nlp_hess_approx_init")) {
+        Function hess_init = get_function("nlp_hess_approx_init");
+                
+        casadi_assert(Hsp_ == hess_init.sparsity_out(0), "The initial hessian approximation needs to have the same sparsity pattern as the exact hessian");
+        // call eval_hess_l_approx_init and pass it to member storage in blocks
+        
+        // Assume initial hessian is fixed for fixed problem
+        // "hess_gamma_x_x" This callback now always returns the hess sparsity. Could and maybe should be changed?
+      }
+
+
 
       // Make sure diagonal exists
       Hsp_ = Hsp_ + Sparsity::diag(nx_);
@@ -579,14 +596,15 @@ namespace casadi {
       nnz_H_ += dim_[i]*dim_[i];
     }
 
-
+    // TODO: add more verbose statements to the solver. This is the only one now...
     if (verbose_) casadi_message(str(nblocks_) + " blocks of max size " + str(max_size) + ".");
 
+    // TODO: try to make the implementation solver independent (e.g. add ooqp support) 
     // Allocate a QP solver
-    //casadi_assert(!qpsol_plugin.empty(), "'qpsol' option has not been set");
-    //qpsol_ = conic("qpsol", qpsol_plugin, {{"h", Hsp_}, {"a", Asp_}},
+    // casadi_assert(!qpsol_plugin.empty(), "'qpsol' option has not been set");
+    // qpsol_ = conic("qpsol", qpsol_plugin, {{"h", Hsp_}, {"a", Asp_}},
     //               qpsol_options);
-    //alloc(qpsol_);
+    // alloc(qpsol_);
 
     // Allocate memory
     alloc_w(Asp_.nnz(), true); // jac
@@ -614,7 +632,16 @@ namespace casadi {
     alloc_iw(nblocks_, true); // noUpdateCounter
 
     // Allocate block diagonal Hessian(s)
-    casadi_int n_hess = hess_update_==1 || hess_update_==4 ? 2 : 1;
+    casadi_int n_hess;
+    if (hess_update_==1 || hess_update_==4) {
+      n_hess = 2;
+    } else {
+      n_hess = 1;
+    }
+    if (has_function("nlp_hess_approx_init")) {
+      ++n_hess;
+    }
+    
     alloc_res(nblocks_*n_hess, true);
     alloc_w(n_hess*nnz_H_, true);
     alloc_iw(nnz_H_ + (nx_+1) + nx_, true); // hessIndRow
@@ -810,7 +837,7 @@ namespace casadi {
       calcInitialHessian(m);
 
       /// Evaluate all functions and gradients for xk_0
-      switch (evaluate(m, &m->obj, m->gk, m->grad_fk, m->jac_g)) {
+      switch (eval_jac_fg(m, &m->obj, m->gk, m->grad_fk, m->jac_g)) {
         case -1:
           m->unified_return_status = SOLVER_RET_NAN;
           return -1;
@@ -964,7 +991,7 @@ namespace casadi {
       calcLagrangeGradient(m, m->gamma, 0);
 
       /// Evaluate functions and gradients at the new xk
-      (void)evaluate(m, &m->obj, m->gk, m->grad_fk, m->jac_g);
+      (void)eval_jac_fg(m, &m->obj, m->gk, m->grad_fk, m->jac_g);
       m->nDerCalls++;
 
       /// Check if converged
@@ -1260,7 +1287,7 @@ namespace casadi {
         m->trial_xk[i] = d_nlp->z[i] + alpha * m->dxk[i];
 
       // Compute problem functions at trial point
-      casadi_int info = evaluate(m, m->trial_xk, &objTrial, m->gk);
+      casadi_int info = eval_fg(m, m->trial_xk, &objTrial, m->gk);
       m->nFunCalls++;
       cNormTrial = lInfConstraintNorm(m, m->trial_xk, m->gk);
       // Reduce step if evaluation fails, if lower bound is violated
@@ -1306,7 +1333,7 @@ namespace casadi {
         dfTdeltaXi += m->grad_fk[i] * m->dxk[i];
 
       // Compute objective and at ||constr(trial_xk)||_1 at trial point
-      casadi_int info = evaluate(m, m->trial_xk, &objTrial, m->gk);
+      casadi_int info = eval_fg(m, m->trial_xk, &objTrial, m->gk);
       m->nFunCalls++;
       cNormTrial = lInfConstraintNorm(m, m->trial_xk, m->gk);
       // Reduce step if evaluation fails, if lower bound is violated or if objective is NaN
@@ -1439,7 +1466,7 @@ namespace casadi {
       }
 
       // Compute objective and ||constr(trialXiSOC)||_1 at SOC trial point
-      info = evaluate(m, m->trial_xk, &objTrialSOC, m->gk);
+      info = eval_fg(m, m->trial_xk, &objTrialSOC, m->gk);
       m->nFunCalls++;
       cNormTrialSOC = lInfConstraintNorm(m, m->trial_xk, m->gk);
       if (info != 0 || objTrialSOC < obj_lo_ || objTrialSOC > obj_up_
@@ -1632,7 +1659,7 @@ namespace casadi {
         m->trial_xk[i] = m2->d_nlp.z[i];
 
       // Compute objective at trial point
-      info = evaluate(m, m->trial_xk, &objTrial, m->gk);
+      info = eval_fg(m, m->trial_xk, &objTrial, m->gk);
       m->nFunCalls++;
       cNormTrial = lInfConstraintNorm(m, m->trial_xk, m->gk);
       if ( info != 0 || objTrial < obj_lo_ || objTrial > obj_up_ ||
@@ -1733,7 +1760,7 @@ namespace casadi {
 
     // Compute objective and ||constr(trial_xk)|| at trial point
     std::vector<double> trialConstr(ng_, 0.);
-    info = evaluate(m, m->trial_xk, &objTrial, get_ptr(trialConstr));
+    info = eval_fg(m, m->trial_xk, &objTrial, get_ptr(trialConstr));
     m->nFunCalls++;
     cNormTrial = lInfConstraintNorm(m, m->trial_xk, get_ptr(trialConstr));
     if (info != 0 || objTrial < obj_lo_ || objTrial > obj_up_
@@ -1845,20 +1872,37 @@ namespace casadi {
   /**
    * Initial Hessian for one block: Identity matrix
    * TODO: add exact prior hessian here. 
+   * Concretely:
+   * add option / parameter for function callback
+   * eval_hess_l_approx_init
+   * in exact hessian (problem hessian) if exists
+   * Call eval on the callback 
+   * Split up the output of the callback into blocks
+   * Write the output into the hessians
    */
   void Blocksqp::calcInitialHessian(BlocksqpMemory* m, casadi_int b) const {
     casadi_int dim = dim_[b];
     casadi_fill(m->hess[b], dim*dim, 0.);
-
+    
+    if (has_function("nlp_hess_approx_init")) {
+      
+      for (casadi_int i=0; i<dim; i++) {
+          m->hess2[b][i+i*dim] = ini_hess_diag_; // row major? --> check this!
+        for (casadi_int j=0; j<dim; j++) {
+          m->hess2[b][i+j*dim] += ini_hess_diag_; // fill entire thing
+        }
+      }
+    } else {
     // Each block is a diagonal matrix
     for (casadi_int i=0; i<dim; i++)
       m->hess[b][i+i*dim] = ini_hess_diag_;
 
-    // If we maintain 2 Hessians, also reset the second one
-    if (m->hess2 != nullptr) {
-      casadi_fill(m->hess2[b], dim*dim, 0.);
-      for (casadi_int i=0; i<dim; i++)
-        m->hess2[b][i+i*dim] = ini_hess_diag_;
+      // If we maintain 2 Hessians, also reset the second one
+      if (m->hess2 != nullptr) {
+        casadi_fill(m->hess2[b], dim*dim, 0.);
+        for (casadi_int i=0; i<dim; i++)
+          m->hess2[b][i+i*dim] = ini_hess_diag_;
+      }
     }
   }
 
@@ -1903,6 +1947,9 @@ namespace casadi {
     calcInitialHessian(m, b);
   }
 
+  /**
+   * TODO: Read up on this scaling thing
+   */
   void Blocksqp::
   sizeInitialHessian(BlocksqpMemory* m, const double* gamma,
                      const double* delta, casadi_int b, casadi_int option) const {
@@ -2071,7 +2118,9 @@ namespace casadi {
     casadi_int m2, pos, posOldest, posNewest;
     casadi_int hessDamped, hessSkipped;
     double averageSizingFactor;
-
+    // TODO find out from where the gradient comes
+    // add extra partial gradient callback maybe? / detach the hess approx. grad with actual grad step 
+    // grad for term-wise splitting. 
     //if objective derv is computed exactly, don't set the last block!
     if (which_second_derv_ == 1 && block_hess_) {
       nBlocks = nblocks_ - 1;
@@ -2168,7 +2217,7 @@ namespace casadi {
   void Blocksqp::
   calcHessianUpdateExact(BlocksqpMemory* m) const {
     // compute exact hessian
-    (void)evaluate(m, m->exact_hess_lag);
+    (void)eval_hess_l(m, m->exact_hess_lag);
 
     // assign exact hessian to blocks
     const casadi_int* col = exact_hess_lag_sp_.colind();
@@ -2851,8 +2900,26 @@ namespace casadi {
     m->lambdaStepNorm = 0.0;
   }
 
+  casadi_int Blocksqp::eval_hess_l_approx_init(BlocksqpMemory* m,
+                 double *hess_approx_init) const {
+    auto d_nlp = &m->d_nlp;
+    static std::vector<double> ones;
+    ones.resize(nx_);
+    for (casadi_int i=0; i<nx_; ++i) ones[i] = 1.0;
+    static std::vector<double> minus_lam_gk;
+    minus_lam_gk.resize(ng_);
+    // Langrange function in blocksqp is L = f - lambdaT * g, whereas + in casadi
+    for (casadi_int i=0; i<ng_; ++i) minus_lam_gk[i] = -m->lam_gk[i];
+    m->arg[0] = d_nlp->z; // x
+    m->arg[1] = d_nlp->p; // p
+    m->arg[2] = get_ptr(ones); // lam:f
+    m->arg[3] = get_ptr(minus_lam_gk); // lam:g
+    m->res[0] = hess_approx_init; // hess:gamma:x:x
+    return calc_function(m, "nlp_hess_approx_init");;
+  }
+
   casadi_int Blocksqp::
-  evaluate(BlocksqpMemory* m,
+  eval_jac_fg(BlocksqpMemory* m,
            double *f, double *g,
            double *grad_f, double *jac_g) const {
     auto d_nlp = &m->d_nlp;
@@ -2866,7 +2933,7 @@ namespace casadi {
   }
 
   casadi_int Blocksqp::
-  evaluate(BlocksqpMemory* m, const double *xk, double *f,
+  eval_fg(BlocksqpMemory* m, const double *xk, double *f,
            double *g) const {
     auto d_nlp = &m->d_nlp;
     m->arg[0] = xk; // x
@@ -2877,7 +2944,7 @@ namespace casadi {
   }
 
   casadi_int Blocksqp::
-  evaluate(BlocksqpMemory* m,
+  eval_hess_l(BlocksqpMemory* m,
            double *exact_hess_lag) const {
     auto d_nlp = &m->d_nlp;
     static std::vector<double> ones;
@@ -2892,7 +2959,7 @@ namespace casadi {
     m->arg[2] = get_ptr(ones); // lam:f
     m->arg[3] = get_ptr(minus_lam_gk); // lam:g
     m->res[0] = exact_hess_lag; // hess:gamma:x:x
-    return calc_function(m, "nlp_hess_l");;
+    return calc_function(m, "nlp_hess_l");
   }
 
   BlocksqpMemory::BlocksqpMemory() {
