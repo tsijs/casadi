@@ -137,7 +137,7 @@ namespace casadi {
     // Temporary memory
     double* jac;
     double* exact_hess_lag;
-    double* hess_init;  // [blockwise] initial custom hessian
+    // double* hess_init;  // [blockwise] initial custom hessian
 
     casadi_int ret_;  // return value (only needed for first iteration of restoration phase)
   };
@@ -361,7 +361,7 @@ namespace casadi {
     casadi_int hess_scaling_;// Scaling strategy for Hessian approximation
     casadi_int fallback_scaling_;  // If indefinite update is used, the type of fallback strategy
     double max_time_qp_;  // Maximum number of time in seconds per QP solve per SQP iteration
-    // double ini_hess_diag_;  // Initial Hessian guess: diagonal matrix diag(iniHessDiag) replaced by block-wise matrix.
+    double ini_hess_diag_;  // Initial Hessian guess: diagonal matrix diag(iniHessDiag) replaced by block-wise matrix.
     std::vector<DM> ini_block_hess_;  // Initial Hessian guess: diagonal matrix diag(iniHessDiag)
     double col_eps_;  // epsilon for COL scaling strategy
     double col_tau1_; // tau1 for COL scaling strategy

@@ -274,7 +274,7 @@ namespace casadi {
     hess_scaling_ = 2;
     fallback_scaling_ = 4;
     max_time_qp_ = 10000.0;
-    // ini_hess_diag_ = 1.0;
+    ini_hess_diag_ = 1.0;
     col_eps_ = 0.1;
     col_tau1_ = 0.5;
     col_tau2_ = 1.0e4;
@@ -363,8 +363,8 @@ namespace casadi {
         fallback_scaling_ = op.second;
       } else if (op.first=="max_time_qp") {
         max_time_qp_ = op.second;
-      // } else if (op.first=="ini_hess_diag") {
-      //   ini_hess_diag_ = op.second;
+      } else if (op.first=="ini_hess_diag") {
+        ini_hess_diag_ = op.second;
       } else if (op.first=="col_eps") {
         col_eps_ = op.second;
       } else if (op.first=="col_tau1") {
@@ -652,9 +652,9 @@ namespace casadi {
       n_hess = 1;
     }
     
-    if (has_function("nlp_hess_approx_init")) {
-      ++n_hess;
-    }
+    // if (has_function("nlp_hess_approx_init")) {
+    //   ++n_hess;
+    // }
 
     alloc_res(nblocks_*n_hess, true);
     alloc_w(n_hess*nnz_H_, true);
@@ -1875,37 +1875,37 @@ namespace casadi {
    * Initial Hessian: Identity matrix
    */
   void Blocksqp::calcInitialHessian(BlocksqpMemory* m) const {
-    if (has_function("nlp_hess_approx_init")) {
-      eval_hess_l_approx_init(m, m->hess_init)
-      for (casadi_int i=0; i<dim; i++) {
-          // m->hess[b][i+i*dim] = ini_hess_diag_; // row major? --> check this!
-        for (casadi_int j=0; j<dim; j++) {
-          m->hess[b][i+j*dim] += hess_init[];// fill entire thing
-        }
-      }
-      // assign exact hessian to blocks
-    const casadi_int* col = Hsp_.colind();
-    const casadi_int* row = Hsp_.row();
-    casadi_int s, dim;
-      s = blocks_[b];
-      dim = dim_[b];
-      // for (casadi_int i=0; i<dim; i++)
-      //   // Set diagonal to 0 (may have been 1 because of CalcInitialHessian)
-      //   m->hess[b][i + i*dim] = 0.0;
-      for (casadi_int j=0; j<dim; j++) {
-        for (casadi_int i=col[j+s]; i<col[j+1+s]; i++) {
-          m->hess[b][row[i]-row[col[s]] + j*dim] = m->exact_hess_lag[i];
-          if (row[i]-row[col[s]] < j)
-            m->hess[b][j + (row[i]-row[col[s]])*dim] = m->exact_hess_lag[i];
-        }
-      }
-    } else {
+    // if (false && has_function("nlp_hess_approx_init")) {
+    //   eval_hess_l_approx_init(m, m->hess_init)
+    //   for (casadi_int i=0; i<dim; i++) {
+    //       // m->hess[b][i+i*dim] = ini_hess_diag_; // row major? --> check this!
+    //     for (casadi_int j=0; j<dim; j++) {
+    //       m->hess[b][i+j*dim] += hess_init[];// fill entire thing
+    //     }
+    //   }
+    //   // assign exact hessian to blocks
+    // const casadi_int* col = Hsp_.colind();
+    // const casadi_int* row = Hsp_.row();
+    // casadi_int s, dim;
+    //   s = blocks_[b];
+    //   dim = dim_[b];
+    //   // for (casadi_int i=0; i<dim; i++)
+    //   //   // Set diagonal to 0 (may have been 1 because of CalcInitialHessian)
+    //   //   m->hess[b][i + i*dim] = 0.0;
+    //   for (casadi_int j=0; j<dim; j++) {
+    //     for (casadi_int i=col[j+s]; i<col[j+1+s]; i++) {
+    //       m->hess[b][row[i]-row[col[s]] + j*dim] = m->exact_hess_lag[i];
+    //       if (row[i]-row[col[s]] < j)
+    //         m->hess[b][j + (row[i]-row[col[s]])*dim] = m->exact_hess_lag[i];
+    //     }
+    //   }
+    // } else {
     for (casadi_int b=0; b<nblocks_; b++)
       //if objective derv is computed exactly, don't set the last block!
       if (!(which_second_derv_ == 1 && block_hess_
         && b == nblocks_-1))
         calcInitialHessian(m, b);
-    }
+    // }
   }
 
 
@@ -1923,19 +1923,15 @@ namespace casadi {
   void Blocksqp::calcInitialHessian(BlocksqpMemory* m, casadi_int b) const {
     casadi_int dim = dim_[b];
     casadi_fill(m->hess[b], dim*dim, 0.);
-    if (has_function("nlp_hess_approx_init")) {
-      // custom nlp hessian approximation initialization 
-    } else {
-      // Each block is a diagonal matrix
-      for (casadi_int i=0; i<dim; i++)
-        m->hess[b][i+i*dim] = 1.0;
+    // Each block is a diagonal matrix
+    for (casadi_int i=0; i<dim; i++)
+      m->hess[b][i+i*dim] = ini_hess_diag_;
 
-      // If we maintain 2 Hessians, also reset the second one
-      if (m->hess2 != nullptr) {
-        casadi_fill(m->hess2[b], dim*dim, 0.);
-        for (casadi_int i=0; i<dim; i++)
-          m->hess2[b][i+i*dim] = 1.0;
-      }
+    // If we maintain 2 Hessians, also reset the second one
+    if (m->hess2 != nullptr) {
+      casadi_fill(m->hess2[b], dim*dim, 0.);
+      for (casadi_int i=0; i<dim; i++)
+        m->hess2[b][i+i*dim] = ini_hess_diag_;
     }
   }
 
@@ -2496,9 +2492,9 @@ namespace casadi {
       opts.enableInertiaCorrection = qpOASES::BT_FALSE;
     else
       opts.enableInertiaCorrection = qpOASES::BT_TRUE;
-    opts.enableEqualities = qpOASES::BT_TRUE;
-    opts.initialStatusBounds = qpOASES::ST_INACTIVE;
-    opts.printLevel = qpOASES::PL_NONE;
+    opts.enableEqualities = qpOASES::BT_TRUE; 
+    opts.initialStatusBounds = qpOASES::ST_INACTIVE; //TODO experiment with this
+    opts.printLevel = qpOASES::PL_NONE;// TODO make this an option
     opts.numRefinementSteps = 2;
     opts.epsLITests =  2.2204e-08;
     m->qp->setOptions(opts);
@@ -2533,6 +2529,7 @@ namespace casadi {
          */
         if (matricesChanged) {
           // Convert block-Hessian to sparse format
+          // TODO add sparsity of exact part to this 
           convertHessian(m);
           delete m->H;
           m->H = nullptr;
