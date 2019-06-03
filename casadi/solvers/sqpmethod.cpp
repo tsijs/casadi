@@ -413,6 +413,24 @@ int Sqpmethod::solve(void* mem) const {
           m->reg = regularize_margin_-casadi_lb_eig(Hsp_, d->Bk);
           if (m->reg > 0) casadi_regularize(Hsp_, d->Bk, m->reg);
         }
+      } else if (has_function("nlp_hess_l_approx")) {
+        // Update/reset exact Hessian
+        m->arg[0] = d_nlp->z;
+        m->arg[1] = d_nlp->p;
+        m->arg[2] = &one;
+        m->arg[3] = d_nlp->lam + nx_;
+        m->arg[4] = d->dx;
+        m->arg[5] = d->gLag;
+        m->arg[6] = d->gLag_old;
+        m->arg[7] = d->Bk;
+        m->res[0] = d->Bk;
+        if (calc_function(m, "nlp_hess_l_approx")) return 1;
+
+        // Determing regularization parameter with Gershgorin theorem
+        if (regularize_) {
+          m->reg = regularize_margin_-casadi_lb_eig(Hsp_, d->Bk);
+          if (m->reg > 0) casadi_regularize(Hsp_, d->Bk, m->reg);
+        }
       } else if (m->iter_count==0) {
         // Initialize BFGS
         casadi_fill(d->Bk, Hsp_.nnz(), 1.);

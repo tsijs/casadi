@@ -362,7 +362,7 @@ namespace casadi {
     casadi_int fallback_scaling_;  // If indefinite update is used, the type of fallback strategy
     double max_time_qp_;  // Maximum number of time in seconds per QP solve per SQP iteration
     double ini_hess_diag_;  // Initial Hessian guess: diagonal matrix diag(iniHessDiag) replaced by block-wise matrix.
-    std::vector<DM> ini_block_hess_;  // Initial Hessian guess: diagonal matrix diag(iniHessDiag)
+    // std::vector<DM> ini_block_hess_;  // Initial Hessian guess: diagonal matrix diag(iniHessDiag)
     double col_eps_;  // epsilon for COL scaling strategy
     double col_tau1_; // tau1 for COL scaling strategy
     double col_tau2_; // tau2 for COL scaling strategy

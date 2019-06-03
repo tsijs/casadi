@@ -548,9 +548,10 @@ namespace casadi {
         Function hess_l = get_function("nlp_hess_l");
         Hsp_ = hess_l.sparsity_out(0);// "hess_gamma_x_x" This callback now always returns the hess sparsity. Could and maybe should be changed?
         casadi_assert(Hsp_.is_symmetric(), "Hessian must be symmetric");
-        exact_hess_lag_sp_ = get_function("nlp_hess_l").sparsity_out(0);
+        
       }
-      
+
+      exact_hess_lag_sp_ = get_function("nlp_hess_l").sparsity_out(0);
       // Make sure diagonal exists
       Hsp_ = Hsp_ + Sparsity::diag(nx_);
 
@@ -2864,7 +2865,8 @@ namespace casadi {
   convertHessian(BlocksqpMemory* m) const {
     casadi_int count, colCountTotal, rowOffset;
     casadi_int nnz;
-
+    // call callback for init matrix
+    
     // 1) count nonzero elements
     nnz = 0;
     for (casadi_int b=0; b<nblocks_; b++) {
